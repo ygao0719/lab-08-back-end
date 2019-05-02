@@ -14,7 +14,6 @@ app.use(cors());
 function Location (query, res){
   this.search_query = query;
   this.formatted_query = res.results[0].formatted_address;
-  // console.log(res.results[0].formatted_address);
   this.latitude = res.results[0].geometry.location.lat;
   this.longitude = res.results[0].geometry.location.lng;
 }
@@ -49,7 +48,6 @@ app.get('/location', (request, response) => {
 app.get('/weather', (request, response) => {
   try {
     const queryData = request.query.data;
-    // console.log(request.query);
     let dataFile = `https://api.darksky.net/forecast/${process.env.DARKSKY_KEY}/${queryData.latitude},${queryData.longitude}`;
     superagent.get(dataFile)
       .end((err, weatherApiResponse) => {
@@ -67,7 +65,6 @@ app.get('/weather', (request, response) => {
 app.get('/events', (request, response) => {
   try {
     const queryData = request.query.data;
-    // console.log(queryData);
     let dataFile = `https://www.eventbriteapi.com/v3/events/search?location.longitude=${queryData.longitude}&location.latitude=${queryData.latitude}`;
     console.log(dataFile);
     superagent.get(dataFile)
