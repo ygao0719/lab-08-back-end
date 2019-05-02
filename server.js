@@ -1,123 +1,92 @@
 'use strict';
 
-// Application Dependencies
-const express = require('express');
-const superagent = require('superagent');
-const cors = require('cors');
-const pg = require('pg');
-
-// Load environment variables from .env file
 require('dotenv').config();
-
-// Application Setup
+const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const cors = require('cors');
+const superagent = require('superagent');
 
+// let locationObject;
+const port = process.env.PORT || 3000;
 app.use(cors());
 
-// Database Setup
-//            postgres protocol
-//                            my uname/pw           domain : port/database
-const client = new pg.Client(process.env.DATABASE_URL);
-client.connect();
 
-// API Routes
+function Location (query, res){
+  this.search_query = query;
+  this.formatted_query = res.results[0].formatted_address;
+  // console.log(res.results[0].formatted_address);
+  this.latitude = res.results[0].geometry.location.lat;
+  this.longitude = res.results[0].geometry.location.lng;
+}
+function Weather (weatherRes, time){
+  this.forecast = weatherRes;
+  this.time = new Date(time * 1000).toDateString();
+} 
+
+function Event(eventRes) {
+  this.link = eventRes.url;
+  this.name = eventRes.name.text;
+  this.event_date = eventRes.start.local;
+  this.summary = eventRes.summary;
+}
+
 app.get('/location', (request, response) => {
-  searchToLatLong(request.query.data)
-    .then(location => response.send(location))
-    .catch(error => handleError(error, response));
+  try{
+    const queryData = request.query.data;
+    let dataFile = `https://maps.googleapis.com/maps/api/geocode/json?address=${queryData}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+    superagent.get(dataFile)
+      .end( (err,googleMapsApiResponse) =>{
+        const locationObject = new Location(queryData, googleMapsApiResponse.body);
+        response.status(200).send(locationObject);
+      });
+  } catch(error){
+    console.log(error);
+    response.status(500).send('There is an error on our end sorry');
+  }
+
 });
 
-app.get('/weather', getWeather);
-app.get('/events', getEvents);
+app.get('/weather', (request, response) => {
+  try {
+    const queryData = request.query.data;
+    // console.log(request.query);
+    let dataFile = `https://api.darksky.net/forecast/${process.env.DARKSKY_KEY}/${queryData.latitude},${queryData.longitude}`;
+    superagent.get(dataFile)
+      .end((err, weatherApiResponse) => {
+        let weatherForecastMap = weatherApiResponse.body.daily.data.map(element=>{
+          return new Weather(element.summary,element.time);
+        });
+        response.status(200).send(weatherForecastMap);
+      });
+  } catch(error){
+    console.log(error);
+    response.status(500).send('There is an error on our end sorry');
+  }
+});
+
+app.get('/events', (request, response) => {
+  try {
+    const queryData = request.query.data;
+    // console.log(queryData);
+    let dataFile = `https://www.eventbriteapi.com/v3/events/search?location.longitude=${queryData.longitude}&location.latitude=${queryData.latitude}`;
+    console.log(dataFile);
+    superagent.get(dataFile)
+      .set({Authorization: `Bearer ${process.env.EVENTBRITE_KEY}`})
+      .end((err, eventBriteApiResponse) => {
+        console.log(eventBriteApiResponse.body.events);
+        let eventMap = eventBriteApiResponse.body.events.map(element =>
+          new Event(element));
+        console.log(eventMap);
+        response.status(200).send(eventMap);
 
 
-// Make sure the server is listening for requests
-app.listen(PORT, () => console.log(`Listening on ${PORT}`));
-
-// Error handler
-function handleError(err, res) {
-  console.error(err);
-  if (res) res.status(500).send('Sorry, something went wrong');
-}
-
-// Models
-function Location(query, res) {
-  this.search_query = query;
-  this.formatted_query = res.body.results[0].formatted_address;
-  this.latitude = res.body.results[0].geometry.location.lat;
-  this.longitude = res.body.results[0].geometry.location.lng;
-}
-
-function Weather(day) {
-  this.forecast = day.summary;
-  this.time = new Date(day.time * 1000).toString().slice(0, 15);
-}
-
-function Event(event) {
-  this.link = event.url;
-  this.name = event.name.text;
-  this.event_date = new Date(event.start.local).toDateString();
-  this.summary = event.summary;
-}
-
-function searchToLatLong(query) {
-  // check if query in database
-  let sqlStatement = 'SELECT * FROM location WHERE search_query = $1;';
-  let values = [ query ];
-  return client.query(sqlStatement, values)
-    .then( (data) => {
-      console.log('we made it');
-      console.log(data);
-      // if data in db, use data from db and send result
-      if(data.rowCount > 0) {
-        // use data from db and send result
-        console.log('we are sending data from the database');
-        return data.rows[0];
-      } else {
-        // otherwise, grab data from gmaps, save to db, and send result
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.GEOCODE_API_KEY}`;
-
-        return superagent.get(url)
-          .then(res => {
-            let newLocation = new Location(query, res);
-            let insertStatement = 'INSERT INTO location ( search_query, formatted_query, latitude, longitude ) VALUES ( $1, $2, $3, $4 );';
-            let insertValues = [ newLocation.search_query, newLocation.formatted_query, newLocation.latitude, newLocation.longitude ];
-            client.query(insertStatement, insertValues);
-            return newLocation;
-          })
-          .catch(error => handleError(error));
-      }
-    });
-}
-
-function getWeather(request, response) {
-  const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
-
-  superagent.get(url)
-    .then(result => {
-      const weatherSummaries = result.body.daily.data.map(day => {
-        return new Weather(day);
       });
 
-      response.send(weatherSummaries);
-    })
-    .catch(error => handleError(error, response));
-}
+  } catch(error){
+    console.log(error);
+    response.status(500).send('There is an error on our end sorry');
+  }
+});
+app.use('*', (request, response) => response.send('Sorry, that route does not exist.'));
 
-
-function getEvents(request, response) {
-  const url = `https://www.eventbriteapi.com/v3/events/search?location.address=${request.query.data.formatted_query}`;
-
-  superagent.get(url)
-    .set('Authorization', `Bearer ${process.env.EVENTBRITE_API_KEY}`)
-    .then(result => {
-      const events = result.body.events.map(eventData => {
-        const event = new Event(eventData);
-        return event;
-      });
-
-      response.send(events);
-    })
-    .catch(error => handleError(error, response));
-}
+app.listen(port,() => console.log(`Listening on port ${port}`));
