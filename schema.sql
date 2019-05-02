@@ -6,11 +6,13 @@ CREATE TABLE locations (
 );
 
 CREATE TABLE weather(
+  search_query VARCHAR(255),
   forecast TEXT,
   weather_time TEXT
 );
 
 CREATE TABLE events(
+  search_query VARCHAR(255),  
   link TEXT,
   event_name TEXT,
   event_date TEXT,
