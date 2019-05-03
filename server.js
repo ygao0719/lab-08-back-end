@@ -3,15 +3,18 @@
 require('dotenv').config();
 const express = require('express');
 const app = express();
+
 const cors = require('cors');
+app.use(cors());
+
 const superagent = require('superagent');
 const pg = require('pg');
 
 const port = process.env.PORT || 3000;
-app.use(cors());
+app.listen(port,() => console.log(`Listening on port ${port}`));
 
 //database setup
-const client = new pg.Client(process.env.HEROKU_POSTGRESQL_BLUE_URL);
+const client = new pg.Client(process.env.DATABASE_URL);
 client.connect();
 
 //construction function
@@ -41,7 +44,6 @@ app.get('/location', (request, response) => {
     let value = [queryData];
     return client.query(sqlStatement,value)
       .then ( (data) => {
-        // console.log(data);
         //if data in database
         if (data.rowCount > 0){
           //use data from db and send result
@@ -96,8 +98,6 @@ app.get('/events', (request, response) => {
           new Event(element));
         // console.log(eventMap);
         response.status(200).send(eventMap);
-
-
       });
 
   } catch(error){
@@ -112,13 +112,13 @@ function lookupFunction (searchQuery, table, dbFetcher, apiFetcher){
   console.log(`Search query: ${searchQuery.search_query}`);
   console.log(`table: ${table}`);
   //if locations contains searchQuery, execute other functions to fetch their data
-  let sqlStatement = 'SELECT * FROM weather WHERE search_query = $1;';
+  let sqlStatement = `SELECT * FROM ${table} WHERE search_query = $1;`;
   let values = [searchQuery.search_query];
   return client.query(sqlStatement, values)
     .then ( (data) => {
       console.log(`Search query returned: ${data.rowCount}`);
       //if data in database
-      if (data.rowCount === 0){
+      if (data.rowCount > 0){
         return apiFetcher(searchQuery.search_query, searchQuery.latitude, searchQuery.longitude);
       }else {
         return dbFetcher(searchQuery);
@@ -156,8 +156,5 @@ function weatherApiFetcher(searchQuery, latitude, longitude){
   // }
 }
 
+// app.use('*', (request, response) => response.send('Sorry, that route does not exist.'));
 
-
-app.use('*', (request, response) => response.send('Sorry, that route does not exist.'));
-
-app.listen(port,() => console.log(`Listening on port ${port}`));

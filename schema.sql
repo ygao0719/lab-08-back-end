@@ -1,20 +1,28 @@
-CREATE TABLE locations (
+DROP TABLE IF EXISTS weathers, yelps, movies, trails, locations;
+
+
+CREATE TABLE IF NOT EXISTS locations (
+  id  SERIAL PRIMARY KEY,
   search_query VARCHAR(255),
   formatted_query VARCHAR(255),
-  latitude DECIMAL,
-  longitude DECIMAL
+  latitude NUMERIC(10,7),
+  longitude NUMERIC(10,7)
 );
 
-CREATE TABLE weather(
+CREATE TABLE IF NOT EXISTS weather(
+  id  SERIAL PRIMARY KEY,
   search_query VARCHAR(255),
-  forecast TEXT,
-  weather_time TEXT
+  forecast VARCHAR(255),
+  weather_time VARCHAR(255),
+  location_id INTEGER REFERENCES location(id)
 );
 
-CREATE TABLE events(
+CREATE TABLE IF NOT EXISTS events(
+  id  SERIAL PRIMARY KEY,
   search_query VARCHAR(255),  
-  link TEXT,
-  event_name TEXT,
-  event_date TEXT,
-  summary TEXT
+  link VARCHAR(255),
+  event_name VARCHAR(255),
+  event_date CHAR(15),
+  summary VARCHAR(1000),
+  location_id INTEGER REFERENCES location(id)
 );
