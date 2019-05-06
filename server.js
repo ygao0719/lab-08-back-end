@@ -8,12 +8,12 @@ const cors = require('cors');
 app.use(cors());
 
 const superagent = require('superagent');
-const pg = require('pg');
 
 const port = process.env.PORT || 3000;
 app.listen(port,() => console.log(`Listening on port ${port}`));
 
 //database setup
+const pg = require('pg');
 const client = new pg.Client(process.env.DATABASE_URL);
 client.connect();
 
