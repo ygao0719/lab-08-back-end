@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS weathers, yelps, movies, trails, locations;
+DROP TABLE IF EXISTS weathers, events, locations;
 
 
 CREATE TABLE IF NOT EXISTS locations (
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS weather(
   search_query VARCHAR(255),
   forecast VARCHAR(255),
   weather_time VARCHAR(255),
-  location_id INTEGER REFERENCES location(id)
+  location_id INTEGER REFERENCES locations(id)
 );
 
 CREATE TABLE IF NOT EXISTS events(
@@ -24,5 +24,5 @@ CREATE TABLE IF NOT EXISTS events(
   event_name VARCHAR(255),
   event_date CHAR(15),
   summary VARCHAR(1000),
-  location_id INTEGER REFERENCES location(id)
+  location_id INTEGER REFERENCES locations(id)
 );
