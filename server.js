@@ -54,7 +54,7 @@ app.get('/location', (request, response) => {
             .end( (err,googleMapsApiResponse) =>{
               // console.log(queryData);
               const locationObject = new Location(queryData, googleMapsApiResponse.body);
-              let insertStatement = 'INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ( $1, $2, $3, $4);';
+              let insertStatement = 'INSERT INTO locations ( search_query, formatted_query, latitude, longitude) VALUES ( $1, $2, $3, $4 ) ON CONFLICT DO NOTHING RETURNING id;';
               let insertValue = [locationObject.search_query,locationObject.formatted_query,locationObject.latitude,locationObject.longitude];
               client.query(insertStatement,insertValue);
               response.status(200).send(locationObject);
@@ -109,8 +109,8 @@ app.get('/events', (request, response) => {
 // response.status(200).send(lookupFunction(search_query, weatherDbFetcher, weatherApiFetcher));
 
 function lookupFunction (searchQuery, table, dbFetcher, apiFetcher){
-  console.log(`Search query: ${searchQuery.search_query}`);
-  console.log(`table: ${table}`);
+  // console.log(`Search query: ${searchQuery.search_query}`);
+  // console.log(`table: ${table}`);
   //if locations contains searchQuery, execute other functions to fetch their data
   let sqlStatement = `SELECT * FROM ${table} WHERE search_query = $1;`;
   let values = [searchQuery.search_query];
@@ -140,7 +140,7 @@ function weatherApiFetcher(searchQuery, latitude, longitude){
   // try {
   let dataFile = `https://api.darksky.net/forecast/${process.env.DARKSKY_KEY}/${latitude},${longitude}`;
   superagent.get(dataFile)
-    .end((err, weatherApiResponse) => {
+    .then((err, weatherApiResponse) => {
       // console.log(weatherApiResponse);
       let weatherForecastMap = weatherApiResponse.body.daily.data.map(element=>{
         return new Weather(element.summary,element.time);
@@ -150,11 +150,12 @@ function weatherApiFetcher(searchQuery, latitude, longitude){
       client.query(insertStatement,insertValue);
       return weatherForecastMap;
     });
-  // } catch(error){
-  //   console.log(error);
-  //   response.status(500).send('There is an error on our end sorry');
-  // }
 }
+//   .catch(error){
+//   console.log(error);
+//   response.status(500).send('There is an error on our end sorry');
+// }
+
 
 // app.use('*', (request, response) => response.send('Sorry, that route does not exist.'));
 
